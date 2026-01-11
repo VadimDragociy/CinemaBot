@@ -17,46 +17,6 @@ async def _http_get_json(
         return None
 
 
-async def _http_get_text(
-    session: ClientSession,
-    url: str, params: Optional[dict],
-    headers: Optional[dict]
-) -> Optional[str]:
-    try:
-        async with session.get(url, params=params, headers=headers, timeout=DEFAULT_TIMEOUT) as resp:
-            resp.raise_for_status()
-            return await resp.text()
-    except Exception:
-        return None
-
-
-async def search_rutube(session: ClientSession, title: str, max_results: int = 8) -> List[Dict]:
-    """
-    Поиск на Rutube — сначала пробует JSON API (v3)
-    Возвращает список dict: {"title","url","source","meta"}
-    """
-    q = title.strip()
-    results = []
-
-    api_url = "https://rutube.ru/api/search/v3/"
-    params = {"query": q, "page": 1, "size": max_results, "type": "video"}
-    j = await _http_get_json(session, api_url, params=params, headers={"Accept": "application/json"})
-    if j:
-        hits = j.get("results") or j.get("items") or j.get("hits") or []
-        for item in hits[:max_results]:
-            url = item.get("url") or item.get("permalink") or None
-            if not url:
-                vid = item.get("id") or item.get("video_id") or item.get("slug")
-                if vid:
-                    url = f"https://rutube.ru/video/{vid}/"
-            title_found = item.get("title") or item.get("name") or q
-            results.append({"title": title_found, "url": url, "source": "rutube", "meta": item})
-        if results:
-            return results
-
-    return results
-
-
 async def search_vk_video(session: ClientSession, title: str, vk_token: Optional[str] = None,
                           vk_api_version: str = "5.199", max_results: int = 3) -> List[Dict]:
     """
@@ -106,7 +66,7 @@ async def search_all(
     timeout = ClientTimeout(total=timeout_seconds)
     async with ClientSession(timeout=timeout) as session:
         tasks = [
-            asyncio.create_task(search_rutube(session, title)),
+            # asyncio.create_task(search_rutube(session, title)),
             asyncio.create_task(search_vk_video(session, title, vk_token=vk_token))
         ]
         done, pending = await asyncio.wait(tasks, return_when=asyncio.ALL_COMPLETED)
